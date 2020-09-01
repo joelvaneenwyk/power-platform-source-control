@@ -94,7 +94,7 @@ class XMLConverter(Converter):
 class JSONConverter(Converter):
 
     EMBEDDED_JSON_KEY = '__powerbi-vcs-embedded-json__'
-    SORT_KEYS = False  # format seems dependent on key order which is ... odd.
+    SORT_KEYS = True  # format seems dependent on key order which is ... odd.
 
     def __init__(self, encoding):
         self.encoding = encoding

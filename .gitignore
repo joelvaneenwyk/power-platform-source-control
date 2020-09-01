@@ -2,3 +2,6 @@
 samples/*
 !samples/*.pbit
 __pycache__
+env
+dist
+build
