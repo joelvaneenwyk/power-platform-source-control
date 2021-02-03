@@ -4,10 +4,10 @@ block_cipher = None
 
 
 a = Analysis(['pbivcs.py'],
-             pathex=['C:\\Users\\Andy-work\\Dev\\powerbi-vcs'],
+             pathex=['C:\\Users\\andy-work\\Dev\\powerbi-vcs'],
              binaries=[],
              datas=[],
-             hiddenimports=['configargparse','lxml'],
+             hiddenimports=[],
              hookspath=[],
              runtime_hooks=[],
              excludes=[],
@@ -30,4 +30,4 @@ exe = EXE(pyz,
           upx=True,
           upx_exclude=[],
           runtime_tmpdir=None,
-          console=True )
+          console=False )
