@@ -52,7 +52,7 @@ class XMLConverter(Converter):
     LXML_ENCODINGS = {
         'utf-8-sig': 'utf-8',
         'utf-16-le': 'utf-16'
-        }
+    }
 
     def __init__(self, encoding, xml_declaration):
         self.encoding = encoding
@@ -69,7 +69,8 @@ class XMLConverter(Converter):
         # If no encoding is specified in the XML, all is well - we can decode it then pass the unicode to the parser.
         # However, if encoding is specified, then lxml won't accept an already decoded string - so we have to pass it
         # the bytes (and let it decode).
-        m = re.match(b'^.{,4}\<\?xml [^\>]*encoding=[\'"]([a-z0-9_\-]+)[\'"]', b)
+        m = re.match(
+            b'^.{,4}\<\?xml [^\>]*encoding=[\'"]([a-z0-9_\-]+)[\'"]', b)
         if m:
             xml_encoding = m.group(1).decode('ascii')
             if xml_encoding.lower() != self.lxml_encoding.lower():
@@ -85,7 +86,8 @@ class XMLConverter(Converter):
         """ Convert from the csv version on xml to the raw form - i.e. not pretty printing and getting the encoding right """
 
         parser = etree.XMLParser(remove_blank_text=True)
-        root = etree.fromstring(b, parser) # note that vcs is always in UTF-8, which is encoded in the xml, so no need to specify
+        # note that vcs is always in UTF-8, which is encoded in the xml, so no need to specify
+        root = etree.fromstring(b, parser)
         # We do the decode and encode at the end so that e.g. if it's meant to be 'utf-8-sig', lxml_enc will be 'utf-8'
         # (which will be encoded in the xml), but we need to add the three -sig bytes to make it 'utf-8-sig'.
         return etree.tostring(root, pretty_print=False, xml_declaration=self.xml_declaration, encoding=self.lxml_encoding).decode(self.lxml_encoding).encode(self.encoding)
@@ -94,10 +96,24 @@ class XMLConverter(Converter):
 class JSONConverter(Converter):
 
     EMBEDDED_JSON_KEY = '__powerbi-vcs-embedded-json__'
-    SORT_KEYS = True  # format seems dependent on key order which is ... odd.
+    SORT_KEYS = False  # format seems dependent on key order which is ... odd.
 
-    def __init__(self, encoding):
+    def __init__(self, encoding, ignore_volatile_dates=False):
         self.encoding = encoding
+        self.ignore_volatile_dates = ignore_volatile_dates
+
+    def _ignore_voldatile_dates(self, kk, v):
+        """
+        Certain dates are just too volatile, so set any volatile dates to epoch start
+        """
+        if isinstance(v, str) and kk == "modifiedTime" or kk == "structureModifiedTime" or kk == "refreshedTime":
+            return "1699-12-31T00:00:00"
+        elif isinstance(v, dict):
+            return {kk: self._ignore_voldatile_dates(kk, vv) for kk, vv in v.items()}
+        elif isinstance(v, list):
+            return [self._ignore_voldatile_dates(None, vv) for vv in v]
+        else:
+            return v
 
     def _jsonify_embedded_json(self, v):
         """
@@ -156,7 +172,12 @@ class JSONConverter(Converter):
     def raw_to_vcs(self, b):
         """ Converts raw json from pbit into that ready for vcs - mainly just prettification """
 
-        return json.dumps(self._jsonify_embedded_json(json.loads(b.decode(self.encoding))), indent=2,
+        raw_json_string = b.decode(self.encoding)
+        raw_json = json.loads(raw_json_string)
+        jsonified_embedded = self._jsonify_embedded_json(raw_json)
+        output = self._ignore_voldatile_dates(
+            None, jsonified_embedded) if self.ignore_volatile_dates else jsonified_embedded
+        return json.dumps(output, indent=2,
                           ensure_ascii=False,  # so embedded e.g. copyright symbols don't be munged to unicode codes
                           sort_keys=self.SORT_KEYS).encode('utf-8')
 
@@ -181,7 +202,8 @@ class MetadataConverter(Converter):
 
         # now split it nicely into line items
         if '\n' in s:
-            raise ValueError("TODO: '\n' is used as a terminator but already exists in string! Someone needs to write some code to dynamically pick the (possibly multi-byte) terminator ...")
+            raise ValueError(
+                "TODO: '\n' is used as a terminator but already exists in string! Someone needs to write some code to dynamically pick the (possibly multi-byte) terminator ...")
         splat = re.split('(\\\\x[0-9a-f]{2})([^\\\\x])', s)
         out = ''
         for i, spl in enumerate(splat):
@@ -258,7 +280,8 @@ class DataMashupConverter(Converter):
             for name in zd.namelist():
                 order.append(name)
                 outfile = os.path.join(outdir, name)
-                os.makedirs(os.path.dirname(outfile), exist_ok=True) # create folder if needed
+                # create folder if needed
+                os.makedirs(os.path.dirname(outfile), exist_ok=True)
                 conv = self.CONVERTERS[name]
                 conv.write_raw_to_vcs(zd.read(name), outfile)
 
@@ -267,8 +290,10 @@ class DataMashupConverter(Converter):
 
         # now write the xmls and bytes between:
         # open(os.path.join(outdir, 'DataMashup', "1.int"), 'wb').write(b[4:8])
-        XMLConverter('utf-8-sig', True).write_raw_to_vcs(xml1, os.path.join(outdir, "3.xml"))
-        XMLConverter('utf-8-sig', True).write_raw_to_vcs(xml2, os.path.join(outdir, "6.xml"))
+        XMLConverter('utf-8-sig', True).write_raw_to_vcs(xml1,
+                                                         os.path.join(outdir, "3.xml"))
+        XMLConverter('utf-8-sig', True).write_raw_to_vcs(xml2,
+                                                         os.path.join(outdir, "6.xml"))
         NoopConverter().write_raw_to_vcs(extra, os.path.join(outdir, "7.bytes"))
 
     def write_vcs_to_raw(self, vcs_dir, rawzip):
@@ -292,12 +317,14 @@ class DataMashupConverter(Converter):
 
         # write first xml:
 
-        xmlb = XMLConverter('utf-8-sig', True).vcs_to_raw(open(os.path.join(vcs_dir, "3.xml"), 'rb').read())
+        xmlb = XMLConverter(
+            'utf-8-sig', True).vcs_to_raw(open(os.path.join(vcs_dir, "3.xml"), 'rb').read())
         rawzip.write(struct.pack("<i", len(xmlb)))
         rawzip.write(xmlb)
 
         # write second xml:
-        xmlb = XMLConverter('utf-8-sig', True).vcs_to_raw(open(os.path.join(vcs_dir, "6.xml"), 'rb').read())
+        xmlb = XMLConverter(
+            'utf-8-sig', True).vcs_to_raw(open(os.path.join(vcs_dir, "6.xml"), 'rb').read())
         rawzip.write(struct.pack("<i", len(xmlb) + 34))
         rawzip.write(b'\x00\x00\x00\x00')
         rawzip.write(struct.pack("<i", len(xmlb)))
