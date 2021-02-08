@@ -16,3 +16,20 @@
 
 this will bundle up ```pbivcs.exe``` to \dist
 Note - this kicks off some antivirus programs - you may need to unquarantine it.
+
+## tasks
+
+### TODO
+
+* Expression - string with \n into __multi_line with array of lines
+* Granular flag - Split data model schema into independent files by table
+  * parser.add_argument('--granular', action='store_true', dest="granular", default=False, help="if present, split data sources into separate files.")
+
+### DOING
+
+* Remove last modified noise
+  * parser.add_argument('--undated', action='store_true', dest="granular", default=False, help="if present, split data sources into separate files.")
+
+### DONE
+
+* Diagram layout - apply formatted json converter

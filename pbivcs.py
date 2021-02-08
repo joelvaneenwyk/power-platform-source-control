@@ -15,6 +15,7 @@ import converters
 CONVERTERS = [
     ('DataModelSchema', converters.JSONConverter('utf-16-le')),
     ('DiagramState', converters.JSONConverter('utf-16-le')),
+    ('DiagramLayout', converters.JSONConverter('utf-16-le')),
     ('Report/Layout', converters.JSONConverter('utf-16-le')),
     ('Report/LinguisticSchema', converters.XMLConverter('utf-16-le', False)),
     ('[[]Content_Types[]].xml', converters.XMLConverter('utf-8-sig', True)),
