@@ -102,12 +102,46 @@ class JSONConverter(Converter):
 
     EMBEDDED_JSON_KEY = '__powerbi-vcs-embedded-json__'
     REFERENCED_ENTRY_KEY = '__powerbi-vcs-reference__'
+    MULTILINE_KEY = "__powerbi-vcs-multiline__"
     REFERENCED_VALUE = "value"
     SORT_KEYS = False  # format seems dependent on key order which is ... odd.
 
     def __init__(self, encoding, ignore_volatile_dates=False):
         self.encoding = encoding
         self.ignore_volatile_dates = ignore_volatile_dates
+
+    def _store_multiline_strings_in_array(self, v):
+        """
+        Break multi line strings into an array
+        Note powerBI consistently uses \n rather than \r\n
+
+        e.g.
+        {"v": "hello\nworld"}
+
+        becomes
+        {"v": {"__powerbi-vcs-multiline__":[
+            "hello",
+            "world"
+        ]}}
+        """
+        if isinstance(v, str) and "\n" in v:
+            return {self.MULTILINE_KEY: v.split("\n")}
+        elif isinstance(v, dict):
+            return {kk: self._store_multiline_strings_in_array(vv) for kk, vv in v.items()}
+        elif isinstance(v, list):
+            return [self._store_multiline_strings_in_array(vv) for vv in v]
+        else:
+            return v
+
+    def _rebuild_multiline_strings_from_array(self, v):
+        if isinstance(v, dict):
+            if len(v) == 1 and self.MULTILINE_KEY in v:
+                return "\n".join(v[self.MULTILINE_KEY])
+            return {kk: self._rebuild_multiline_strings_from_array(vv) for kk, vv in v.items()}
+        elif isinstance(v, list):
+            return [self._rebuild_multiline_strings_from_array(vv) for vv in v]
+        else:
+            return v
 
     def _store_large_entries_as_references(self, k, v):
         """
@@ -250,6 +284,7 @@ class JSONConverter(Converter):
         cooked_json = raw_json
         cooked_json = self._jsonify_embedded_json(cooked_json)
         cooked_json = self._ignore_volatile_dates(None, cooked_json)
+        cooked_json = self._store_multiline_strings_in_array(cooked_json)
         # Sorting visual containers while useful doesn't work...
         #cooked_json = self._sort_visual_containers(None, cooked_json)
         cooked_json = self._store_large_entries_as_references(
@@ -268,8 +303,8 @@ class JSONConverter(Converter):
         raw_json = json.loads(b.decode('utf-8'))
         cooked_json = raw_json
         cooked_json = self._dereference_references(cooked_json)
+        cooked_json = self._rebuild_multiline_strings_from_array(cooked_json)
         cooked_json = self._undo_jsonify_embedded_json(cooked_json)
-
         return json.dumps(cooked_json, separators=(',', ':'), ensure_ascii=False, sort_keys=self.SORT_KEYS).encode(self.encoding)
 
     def raw_to_textconv(self, b):
