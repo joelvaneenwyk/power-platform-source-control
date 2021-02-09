@@ -13,10 +13,10 @@ import converters
 
 
 CONVERTERS = [
-    ('DataModelSchema', converters.JSONConverter('utf-16-le', True)),
+    ('DataModelSchema', converters.JSONConverter('utf-16-le')),
     ('DiagramState', converters.JSONConverter('utf-16-le')),
     ('DiagramLayout', converters.JSONConverter('utf-16-le')),
-    ('Report/Layout', converters.JSONConverter('utf-16-le', True)),
+    ('Report/Layout', converters.JSONConverter('utf-16-le')),
     ('Report/LinguisticSchema', converters.XMLConverter('utf-16-le', False)),
     ('[[]Content_Types[]].xml', converters.XMLConverter('utf-8-sig', True)),
     ('SecurityBindings', converters.NoopConverter()),
@@ -36,7 +36,7 @@ def find_converter(path):
     return converters.NoopConverter()
 
 
-def extract_pbit(pbit_path, outdir, overwrite):
+def extract_pbit(pbit_path, outdir, overwrite, diffable):
     """
     Convert a pbit to vcs format
     """
@@ -63,13 +63,14 @@ def extract_pbit(pbit_path, outdir, overwrite):
             # get converter:
             conv = find_converter(name)
             # convert
+            conv.diffable = diffable
             conv.write_raw_to_vcs(zd.read(name), outpath)
 
         # write order files:
         open(os.path.join(outdir, ".zo"), 'w').write("\n".join(order))
 
 
-def compress_pbit(extracted_path, compressed_path, overwrite):
+def compress_pbit(extracted_path, compressed_path, overwrite, diffable):
     """Convert a vcs store to valid pbit."""
     # TODO: check all paths exists
 
@@ -90,6 +91,7 @@ def compress_pbit(extracted_path, compressed_path, overwrite):
             # get converter:
             conv = find_converter(name)
             # convert
+            conv.diffable = diffable
             with zd.open(name, 'w') as z:
                 conv.write_vcs_to_raw(os.path.join(extracted_path, name), z)
 
@@ -147,6 +149,8 @@ if __name__ == '__main__':
                         help="extract pbit at INPUT to textconv format on stdout")
     parser.add_argument('--over-write', action='store_true', dest="overwrite", default=False,
                         help="if present, allow overwriting of OUTPUT. If not, will fail if OUTPUT exists")
+    parser.add_argument('--diffable', action='store_true', dest="diffable", default=False,
+                        help="if present, reformat output in various ways to improve diff-ability")
 
     # parse args first to get input path:
     input_path = parser.parse_args().input
@@ -165,6 +169,8 @@ if __name__ == '__main__':
             parser.error('Error! Input and output paths cannot be same')
 
         if args.extract:
-            extract_pbit(args.input, args.output, args.overwrite)
+            extract_pbit(args.input, args.output,
+                         args.overwrite, args.diffable)
         else:
-            compress_pbit(args.input, args.output, args.overwrite)
+            compress_pbit(args.input, args.output,
+                          args.overwrite, args.diffable)

@@ -106,9 +106,8 @@ class JSONConverter(Converter):
     REFERENCED_VALUE = "value"
     SORT_KEYS = False  # format seems dependent on key order which is ... odd.
 
-    def __init__(self, encoding, ignore_volatile_dates=False):
+    def __init__(self, encoding):
         self.encoding = encoding
-        self.ignore_volatile_dates = ignore_volatile_dates
 
     def _store_multiline_strings_in_array(self, v):
         """
@@ -283,12 +282,14 @@ class JSONConverter(Converter):
         raw_json = json.loads(raw_json_string)
         cooked_json = raw_json
         cooked_json = self._jsonify_embedded_json(cooked_json)
-        cooked_json = self._ignore_volatile_dates(None, cooked_json)
-        cooked_json = self._store_multiline_strings_in_array(cooked_json)
-        # Sorting visual containers while useful doesn't work...
-        #cooked_json = self._sort_visual_containers(None, cooked_json)
-        cooked_json = self._store_large_entries_as_references(
-            None, cooked_json)
+        if self.diffable:
+            cooked_json = self._ignore_volatile_dates(None, cooked_json)
+            cooked_json = self._store_multiline_strings_in_array(cooked_json)
+            # Sorting visual containers while useful doesn't work...
+            #cooked_json = self._sort_visual_containers(None, cooked_json)
+            cooked_json = self._store_large_entries_as_references(
+                None, cooked_json)
+
         return json.dumps(cooked_json, indent=2,
                           # so embedded e.g. copyright symbols don't be munged to unicode codes
                           ensure_ascii=False,
@@ -302,8 +303,10 @@ class JSONConverter(Converter):
         """
         raw_json = json.loads(b.decode('utf-8'))
         cooked_json = raw_json
-        cooked_json = self._dereference_references(cooked_json)
-        cooked_json = self._rebuild_multiline_strings_from_array(cooked_json)
+        if self.diffable:
+            cooked_json = self._dereference_references(cooked_json)
+            cooked_json = self._rebuild_multiline_strings_from_array(
+                cooked_json)
         cooked_json = self._undo_jsonify_embedded_json(cooked_json)
         return json.dumps(cooked_json, separators=(',', ':'), ensure_ascii=False, sort_keys=self.SORT_KEYS).encode(self.encoding)
 

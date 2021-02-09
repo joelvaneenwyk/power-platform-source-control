@@ -26,10 +26,11 @@ Note - this kicks off some antivirus programs - you may need to unquarantine it.
 
 ### DOING
 
-* Expression - string with \n into __multi_line with array of lines
+* Change option to "--diffable", and use it
 
 ### DONE
 
+* Expression - string with \n into __multi_line with array of lines
 * Split large data model schema "tables" into independent files
 * Split large report model schema "bookmarks" into independent files
 * Split large report model schema "sections" into independent files
