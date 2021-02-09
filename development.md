@@ -21,16 +21,18 @@ Note - this kicks off some antivirus programs - you may need to unquarantine it.
 
 ### TODO
 
-* Sort Layout Visual Containers array by id
+* Refactor into strategy/visitor pattern for json rewriting
 * Expression - string with \n into __multi_line with array of lines
-* Granular flag - Split data model schema into independent files by table
-
 
 ### DOING
 
-* Remove last modified noise
-  * only needed on data model schema, so hard-coded
+* Sort Layout Visual Containers array by id
+* Split large data model schema "tables" into independent files
+* Split large report model schema "bookmarks" into independent files
+* Split large report model schema "sections" into independent files
 
 ### DONE
 
+* Remove last modified noise
+  * only needed on data model schema, so hard-coded
 * Diagram layout - apply formatted json converter

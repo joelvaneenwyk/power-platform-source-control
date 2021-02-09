@@ -1,11 +1,14 @@
-import zipfile
-import json
-import re
-from io import BytesIO
-import struct
-from lxml import etree
-import os
 import ast
+import json
+import os
+from os.path import dirname
+import re
+import struct
+import zipfile
+from io import BytesIO
+from operator import itemgetter
+
+from lxml import etree
 
 
 class Converter:
@@ -21,11 +24,13 @@ class Converter:
         return self.raw_to_vcs(b, *args, **kwargs).decode('utf-8')
 
     def write_raw_to_vcs(self, b, vcspath, *args, **kwargs):
-        os.makedirs(os.path.dirname(vcspath), exist_ok=True)
+        self.dir = os.path.dirname(vcspath)
+        os.makedirs(self.dir, exist_ok=True)
         with open(vcspath, 'wb') as f:
             f.write(self.raw_to_vcs(b, *args, **kwargs))
 
     def write_vcs_to_raw(self, vcspath, rawzip, *args, **kwargs):
+        self.dir = os.path.dirname(vcspath)
         with open(vcspath, 'rb') as f:
             rawzip.write(self.vcs_to_raw(f.read(), *args, **kwargs))
 
@@ -96,22 +101,85 @@ class XMLConverter(Converter):
 class JSONConverter(Converter):
 
     EMBEDDED_JSON_KEY = '__powerbi-vcs-embedded-json__'
+    REFERENCED_ENTRY_KEY = '__powerbi-vcs-reference__'
+    REFERENCED_VALUE = "value"
     SORT_KEYS = False  # format seems dependent on key order which is ... odd.
 
     def __init__(self, encoding, ignore_volatile_dates=False):
         self.encoding = encoding
         self.ignore_volatile_dates = ignore_volatile_dates
 
-    def _ignore_voldatile_dates(self, kk, v):
+    def _store_large_entries_as_references(self, k, v):
+        """
+        Some documents become unmanageable,
+        break report layout out by visualContainer (tab)
+        and DataModelSchema out by table into files in subdirectory alongside file
+        """
+        if isinstance(v, dict):
+            return {kk: self._store_large_entries_as_references(kk, vv) for kk, vv in v.items()}
+        elif isinstance(v, list):
+            modified = [self._store_large_entries_as_references(
+                None, vv) for vv in v]
+            if (k != "tables" and k != "sections" and k != "bookmarks") or len(v) == 0 or not isinstance(v[0], dict) or not "name" in v[0]:
+                return modified
+            return [
+                {self.REFERENCED_ENTRY_KEY: self._store_reference(k, vv)} for vv in modified]
+        else:
+            return v
+
+    def _store_reference(self, folder, entry):
+        # Handily the lists we want to store all have a nice name property
+        name = entry.get("displayName", entry.get("name"))
+        safe_name = "".join(
+            [c for c in name if re.match(r'\w', c)])
+        filename = os.path.join(self.dir, folder, safe_name + ".json")
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+
+        json_string = json.dumps({self.REFERENCED_VALUE: entry}, indent=2,
+                                 ensure_ascii=False,  # so embedded e.g. copyright symbols don't be munged to unicode codes
+                                 sort_keys=self.SORT_KEYS).encode('utf-8')
+
+        with open(filename, 'wb') as f:
+            f.write(json_string)
+
+        relative_path = os.path.relpath(filename, self.dir)
+        return relative_path
+
+    def _dereference_references(self, v):
+        if isinstance(v, dict):
+            if len(v) == 1 and self.REFERENCED_ENTRY_KEY in v:
+                return self._dereference_reference(v[self.REFERENCED_ENTRY_KEY])
+            return {kk: self._dereference_references(vv) for kk, vv in v.items()}
+        elif isinstance(v, list):
+            return [self._dereference_references(vv) for vv in v]
+        else:
+            return v
+
+    def _dereference_reference(self, filename):
+        with open(os.path.join(self.dir, filename), 'rb') as f:
+            return json.loads(f.read()).get(self.REFERENCED_VALUE)
+
+    def _sort_visual_containers(self, kk, v):
+        if isinstance(v, dict):
+            return {kk: self._sort_visual_containers(kk, vv) for kk, vv in v.items()}
+        elif isinstance(v, list):
+            modified = [self._sort_visual_containers(None, vv) for vv in v]
+            if (kk != "visualContainers"):
+                return modified
+            return sorted(modified, key=lambda v: v.get("id", v.get("z")))
+        else:
+            return v
+
+    def _ignore_volatile_dates(self, kk, v):
         """
         Certain dates are just too volatile, so set any volatile dates to epoch start
         """
         if isinstance(v, str) and kk == "modifiedTime" or kk == "structureModifiedTime" or kk == "refreshedTime":
             return "1699-12-31T00:00:00"
         elif isinstance(v, dict):
-            return {kk: self._ignore_voldatile_dates(kk, vv) for kk, vv in v.items()}
+            return {kk: self._ignore_volatile_dates(kk, vv) for kk, vv in v.items()}
         elif isinstance(v, list):
-            return [self._ignore_voldatile_dates(None, vv) for vv in v]
+            return [self._ignore_volatile_dates(None, vv) for vv in v]
         else:
             return v
 
@@ -170,20 +238,39 @@ class JSONConverter(Converter):
             return v
 
     def raw_to_vcs(self, b):
-        """ Converts raw json from pbit into that ready for vcs - mainly just prettification """
+        """
+        Converts raw json from pbit into that ready for vcs - modifying json to improve diff-ability
+            Embedded json strings broken out into substrings
+            Volatile dates set to start of epoch
+            Lists of large objects (pages, tables etc) stored in path with reference
+        """
 
         raw_json_string = b.decode(self.encoding)
         raw_json = json.loads(raw_json_string)
-        jsonified_embedded = self._jsonify_embedded_json(raw_json)
-        output = self._ignore_voldatile_dates(
-            None, jsonified_embedded) if self.ignore_volatile_dates else jsonified_embedded
-        return json.dumps(output, indent=2,
-                          ensure_ascii=False,  # so embedded e.g. copyright symbols don't be munged to unicode codes
+        cooked_json = raw_json
+        cooked_json = self._jsonify_embedded_json(cooked_json)
+        cooked_json = self._ignore_volatile_dates(None, cooked_json)
+        # Sorting visual containers while useful doesn't work...
+        #cooked_json = self._sort_visual_containers(None, cooked_json)
+        cooked_json = self._store_large_entries_as_references(
+            None, cooked_json)
+        return json.dumps(cooked_json, indent=2,
+                          # so embedded e.g. copyright symbols don't be munged to unicode codes
+                          ensure_ascii=False,
                           sort_keys=self.SORT_KEYS).encode('utf-8')
 
     def vcs_to_raw(self, b):
-        """ Converts vcs json to that used in pbit - mainly just minification """
-        return json.dumps(self._undo_jsonify_embedded_json(json.loads(b.decode('utf-8'))), separators=(',', ':'), ensure_ascii=False, sort_keys=self.SORT_KEYS).encode(self.encoding)
+        """
+        Converts vcs json to that used in pbit - removing modifications to improve diff-ability
+            Embedded json strings broken out into substrings
+            Lists of large objects (pages, tables etc) stored in path with reference
+        """
+        raw_json = json.loads(b.decode('utf-8'))
+        cooked_json = raw_json
+        cooked_json = self._dereference_references(cooked_json)
+        cooked_json = self._undo_jsonify_embedded_json(cooked_json)
+
+        return json.dumps(cooked_json, separators=(',', ':'), ensure_ascii=False, sort_keys=self.SORT_KEYS).encode(self.encoding)
 
     def raw_to_textconv(self, b):
         """ Converts raw json from pbit into that ready for diffing - mainly just prettification """
