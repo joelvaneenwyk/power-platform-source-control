@@ -26,10 +26,10 @@ Note - this kicks off some antivirus programs - you may need to unquarantine it.
 
 ### DOING
 
-* Change option to "--diffable", and use it
-
 ### DONE
 
+* Rebase on upstream master
+* Change option to "--diffable", and use it
 * Expression - string with \n into __multi_line with array of lines
 * Split large data model schema "tables" into independent files
 * Split large report model schema "bookmarks" into independent files
