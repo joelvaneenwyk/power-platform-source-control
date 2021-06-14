@@ -88,10 +88,13 @@ def compress_pbit(extracted_path, compressed_path, overwrite, diffable):
     with zipfile.ZipFile(compressed_path, mode='w',
                          compression=zipfile.ZIP_DEFLATED) as zd:
         for name in order:
+            if name=="":
+                continue
             # get converter:
             conv = find_converter(name)
             # convert
             conv.diffable = diffable
+            print(">" + name)
             with zd.open(name, 'w') as z:
                 conv.write_vcs_to_raw(os.path.join(extracted_path, name), z)
 

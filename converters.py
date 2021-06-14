@@ -37,6 +37,7 @@ class Converter:
     def write_raw_to_textconv(self, b, outio, *args, **kwargs):
         print(self.raw_to_textconv(b, *args, **kwargs), file=outio)
 
+
 class NoopConverter(Converter):
 
     def raw_to_vcs(self, b):
@@ -51,6 +52,7 @@ class NoopConverter(Converter):
         my_SHA256.update(b)
 
         return "File hash: " + my_SHA256.hexdigest() + "\n"
+
 
 class XMLConverter(Converter):
 
@@ -192,27 +194,51 @@ class JSONConverter(Converter):
         with open(os.path.join(self.dir, filename), 'rb') as f:
             return json.loads(f.read()).get(self.REFERENCED_VALUE)
 
-    def _sort_visual_containers(self, kk, v):
+    def _sort_visual_containers(self, k, v):
         if isinstance(v, dict):
             return {kk: self._sort_visual_containers(kk, vv) for kk, vv in v.items()}
         elif isinstance(v, list):
             modified = [self._sort_visual_containers(None, vv) for vv in v]
-            if (kk != "visualContainers"):
+            if (k != "visualContainers"):
                 return modified
-            return sorted(modified, key=lambda v: v.get("id", v.get("z")))
+            return sorted(modified, key=lambda v: v.get("z", v.get("id")))
         else:
             return v
 
-    def _ignore_volatile_dates(self, kk, v):
+    def _ignore_volatile_dates(self, k, v):
         """
         Certain dates are just too volatile, so set any volatile dates to epoch start
         """
-        if isinstance(v, str) and kk == "modifiedTime" or kk == "structureModifiedTime" or kk == "refreshedTime":
+        if isinstance(v, str) and k == "modifiedTime" or k == "structureModifiedTime" or k == "refreshedTime":
             return "1699-12-31T00:00:00"
         elif isinstance(v, dict):
             return {kk: self._ignore_volatile_dates(kk, vv) for kk, vv in v.items()}
         elif isinstance(v, list):
             return [self._ignore_volatile_dates(None, vv) for vv in v]
+        else:
+            return v
+
+    def _renumber_element_ids(self, k, v, containing_list_key, id_index=None):
+        """
+        Ids are volatile re-order ids from dicts which are in lists called visualContainers
+        """
+        if isinstance(v, dict):
+            return {kk: self._renumber_element_ids(kk, vv, containing_list_key, id_index) for kk, vv in v.items()}
+        elif isinstance(v, list):
+            return [self._renumber_element_ids(None, vv, k, ix) for ix, vv in enumerate(v)]
+        elif containing_list_key == "visualContainers" and k == "id":
+            return id_index
+        else:
+            return v
+
+    def _ignore_objectids(self, k, v):
+        """
+        ObjectIds are volatile and completely unecessary - remove them from all dicts
+        """
+        if isinstance(v, dict):
+            return {kk: self._ignore_objectids(kk, vv) for kk, vv in v.items() if kk != "objectId"}
+        elif isinstance(v, list):
+            return [self._ignore_objectids(None, vv) for vv in v]
         else:
             return v
 
@@ -284,9 +310,11 @@ class JSONConverter(Converter):
         cooked_json = self._jsonify_embedded_json(cooked_json)
         if self.diffable:
             cooked_json = self._ignore_volatile_dates(None, cooked_json)
-            cooked_json = self._store_multiline_strings_in_array(cooked_json)
             # Sorting visual containers while useful doesn't work...
             #cooked_json = self._sort_visual_containers(None, cooked_json)
+            #cooked_json = self._renumber_element_ids(None, cooked_json, None)
+
+            cooked_json = self._store_multiline_strings_in_array(cooked_json)
             cooked_json = self._store_large_entries_as_references(
                 None, cooked_json)
 
@@ -316,6 +344,7 @@ class JSONConverter(Converter):
         return json.dumps(self._jsonify_embedded_json(json.loads(b.decode(self.encoding))), indent=2,
                           ensure_ascii=False,  # so embedded e.g. copyright symbols don't be munged to unicode codes
                           sort_keys=True) + "\n"
+
 
 class MetadataConverter(Converter):
 
@@ -457,7 +486,6 @@ class DataMashupConverter(Converter):
 
         # write the rest:
         NoopConverter().write_vcs_to_raw(os.path.join(vcs_dir, "7.bytes"), rawzip)
-
 
     def write_raw_to_textconv(self, b, outio):
         """ Convert the raw format into readable text for comparison"""
