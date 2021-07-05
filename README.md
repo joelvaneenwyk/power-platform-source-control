@@ -11,14 +11,15 @@ We're really busy at the moment (Jan 2018) and have put development of this on h
 The PBIX and PBIT files are [Open Packaging Conventions files](https://en.wikipedia.org/wiki/Open_Packaging_Conventions). Within a PBIX container there are two binary files of particular note, which would require further conversion for storage within a VCS. Some of this work can be skipped by saving the file as a PBIT.
 
 #### Binary blob format specifications
- - DataMashup: [MS-QDEFF](https://interoperability.blob.core.windows.net/files/MS-QDEFF/%5bMS-QDEFF%5d.pdf).
- - DataModel: [MS-XLDM](https://interoperability.blob.core.windows.net/files/MS-XLDM/%5bMS-XLDM%5d.pdf)
- 
+
+- DataMashup: [MS-QDEFF](https://interoperability.blob.core.windows.net/files/MS-QDEFF/%5bMS-QDEFF%5d.pdf).
+- DataModel: [MS-XLDM](https://interoperability.blob.core.windows.net/files/MS-XLDM/%5bMS-XLDM%5d.pdf)
+
 These can be used to further enhance the converters, if anyone ever has the time. There is no guarentee these formats are exact or current. The specifications are intended for the streams embedded in Excel files. However they are closely related (and may be identical).
 
 &nbsp;
 
---- 
+---
 
 > NOTE: this is not yet ready to be used!
 
@@ -29,7 +30,7 @@ Power BI does not (currently) support integration with source control, which is 
 - repos blow up quickly, as even with minor changes, the entire `*.pbi{xt}` is saved.
 - it's hard to collaborate as changes from two developers can't be merged, and hence changes must be made one after the other (so you're effectively limited to a single full-time developer per report).
 
-This repo aims to improve this as much as possible (without tweaking Power BI itself) *until Powe BI itself supports this*.
+This repo aims to improve this as much as possible (without tweaking Power BI itself) _until Powe BI itself supports this_.
 
 > That's right ... this is only a temporary hack, and should be treated as such.
 
@@ -79,15 +80,18 @@ pbivcs -c apples.pbit.vcs apples.pbit
 (and yes, since you're super careful, you can control how overwrites etc. happen).
 
 ### Git textconv driver support
+
 This option dumps the extracted file contents to standard out to allow for better diffs in git of files which were commited in the binary PBIT or PBIX format.
 
 Add to repo .gitattributes file:
+
 ```
 *.pbit diff=pbit
 *.pbix diff=pbit
 ```
 
 Add to global or local .gitconfig file:
+
 ```
 [diff "pbit"]
 	textconv = pbivcs -s
@@ -99,7 +103,6 @@ Documentation of git textconv drivers [https://git.wiki.kernel.org/index.php/Tex
 
 ### Other cool features
 
-
 - TODO: change control: we'll attempt to keep this as up-to-date with Power BI as possible. The version of this tool that was used will be saved in any extraction/compression process, to allow (in theory) this tool to work on a complete git history, regardless of the Power BI versions used. (Provided this tool always functioned.)
 - TODO: everything's configurable to your level of comfort (e.g. always overwrite files, or check first, etc.)
 - lots of configuration. There a built-in defaults (conservative safe ones), but you can also specify your own defaults (in a hierarchy of `.pbivcs.conf` files), as well as utilising environment variables, and command line arguments. See below [TODO]
@@ -107,8 +110,8 @@ Documentation of git textconv drivers [https://git.wiki.kernel.org/index.php/Tex
 ### What don't I get?
 
 - unthinking automation (at least for now):
-	- you still need to manually export a `*.pbit` from your `*.pbix`
-	- you have to run scripts before/after the git actions. If this solution proves to be robust, we may automate this somewhat with git hooks or filters, but I'm wary of the bugs these may introduce into the user experience.
+  - you still need to manually export a `*.pbit` from your `*.pbix`
+  - you have to run scripts before/after the git actions. If this solution proves to be robust, we may automate this somewhat with git hooks or filters, but I'm wary of the bugs these may introduce into the user experience.
 
 ### Configuration
 

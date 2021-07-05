@@ -1,0 +1,10 @@
+services:
+  pbivcs:
+    # docker-compose up --build
+    # docker-compose run --rm /pbivcs --version
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile
+      target: bin
+      # target: build
+    # command: pbivcs --version

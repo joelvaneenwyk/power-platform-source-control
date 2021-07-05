@@ -1,0 +1,27 @@
+{
+  "files.eol": "\n",
+  "python.linting.enabled": true,
+  "python.linting.pylamaEnabled": true,
+  "editor.formatOnSave": true,
+  "python.languageServer": "Pylance",
+  "python.formatting.provider": "black",
+  "[dockercompose]": {
+    "editor.tabSize": 2,
+    "editor.quickSuggestions": {
+      "other": true,
+      "comments": false,
+      "strings": true
+    }
+  },
+  "[python]": {
+    "editor.tabSize": 4
+  },
+  "python.pythonPath": ".venv/bin/python",
+  "files.associations": {
+    "*.spec": "python"
+  },
+  "python.testing.pytestArgs": ["tests"],
+  "python.testing.unittestEnabled": false,
+  "python.testing.nosetestsEnabled": false,
+  "python.testing.pytestEnabled": true
+}

@@ -1,0 +1,11 @@
+*
+!**/Dockerfile*
+!docker/
+!dist/
+!src
+!*.toml
+!Makefile
+!./*.py
+!*.spec
+!LICENSE.md
+!.env
