@@ -7,7 +7,6 @@ dist
 build
 .vscode/launch.json
 poetry.toml
-poetry.lock
 .venv
 tests/tmp
 *.ses
