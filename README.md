@@ -1,23 +1,25 @@
-### Project status
+# Power Platform for Source Control
+
+## Project Status
 
 We're really busy at the moment (Jan 2018) and have put development of this on hold until we start to need it internally (which is likely to be a few months). If you're interested in using this, you have a few options:
 
 - use it in it's current state - it's pretty hacky, but worked on our limited test set
 - fork it and make it better!
-- use the port (https://github.com/Togusa09/powerbi-vcs-dotnet) which may be more maintained etc.
+- use the port (<https://github.com/Togusa09/powerbi-vcs-dotnet>) which may be more maintained etc.
 
-### File Format Specification
+## File Format Specification
 
 The PBIX and PBIT files are [Open Packaging Conventions files](https://en.wikipedia.org/wiki/Open_Packaging_Conventions). Within a PBIX container there are two binary files of particular note, which would require further conversion for storage within a VCS. Some of this work can be skipped by saving the file as a PBIT.
 
-#### Binary blob format specifications
+### Binary blob format specifications
 
 - DataMashup: [MS-QDEFF](https://interoperability.blob.core.windows.net/files/MS-QDEFF/%5bMS-QDEFF%5d.pdf).
 - DataModel: [MS-XLDM](https://interoperability.blob.core.windows.net/files/MS-XLDM/%5bMS-XLDM%5d.pdf)
 
-These can be used to further enhance the converters, if anyone ever has the time. There is no guarentee these formats are exact or current. The specifications are intended for the streams embedded in Excel files. However they are closely related (and may be identical).
+These can be used to further enhance the converters, if anyone ever has the time. There is no guarantee these formats are exact or current. The specifications are intended for the streams embedded in Excel files. However they are closely related (and may be identical)
 
-&nbsp;
+&nsp;
 
 ---
 
@@ -30,17 +32,17 @@ Power BI does not (currently) support integration with source control, which is 
 - repos blow up quickly, as even with minor changes, the entire `*.pbi{xt}` is saved.
 - it's hard to collaborate as changes from two developers can't be merged, and hence changes must be made one after the other (so you're effectively limited to a single full-time developer per report).
 
-This repo aims to improve this as much as possible (without tweaking Power BI itself) _until Powe BI itself supports this_.
+This repo aims to improve this as much as possible (without tweaking Power BI itself) until Power BI itself supports this.
 
 > That's right ... this is only a temporary hack, and should be treated as such.
 
 It abuses the fact that `*.pbi{tx}` files are (nearly) just (double) ZIP compressed folders which follow a specific structure.
 
-### Installation [TODO]
+### Installation
 
 Install python 3 (I recommend Anaconda if you're using Windows). Until someone writes the install script: just run the `pbivcs.py` file
 
-### What do I get (currently)?
+### What do I get today?
 
 Say you've just made some changes to your Power BI file `apples.pbix` and you want to add it to version control. First, you'll need to export it as a Power BI Template i.e. `apples.pbit`, and then extract it into a VCS-friendly format:
 
@@ -58,7 +60,7 @@ will (assuming you've set it up as outlined below):
 
 1. [TODO] check you haven't accidentally forgotten to export a new `pbit` from your `pbix`
 2. commit `apples.pbit.vcs` to git
-3. (optionally) ignore `apples.pbit` and `apples.pbix` or [TODO] replace them with chksums (or a link to a file store of all versions? depending on your CI. TODO: can we actually create an `apples.pbit.history` folder to contain these? This would ensure no `pbit` is ever over-written.)
+3. (optionally) ignore `apples.pbit` and `apples.pbix` or [TODO] replace them with checksums (or a link to a file store of all versions? depending on your CI. TODO: can we actually create an `apples.pbit.history` folder to contain these? This would ensure no `pbit` is ever over-written.)
 
 Now, suppose your colleague had also made a change to the same report. Then a `git pull` and `git diff` might show something like this:
 
@@ -81,25 +83,25 @@ pbivcs -c apples.pbit.vcs apples.pbit
 
 ### Git textconv driver support
 
-This option dumps the extracted file contents to standard out to allow for better diffs in git of files which were commited in the binary PBIT or PBIX format.
+This option dumps the extracted file contents to standard out to allow for better diffs in git of files which were committed in the binary `PBIT` or `PBIX` formats.
 
-Add to repo .gitattributes file:
+Add to repo `.gitattributes` file:
 
-```
+```ini
 *.pbit diff=pbit
 *.pbix diff=pbit
 ```
 
-Add to global or local .gitconfig file:
+Add to global or local `.gitconfig` file:
 
-```
+```ini
 [diff "pbit"]
-	textconv = pbivcs -s
+textconv = pbivcs -s
 ```
 
-Diffs in git will do their diff on the extracted file content. Textconv diffs are only a visual guide, and can't be used to merge changes, but this provides better insight into what has changed in the power bi report.
+Diffs in git will do their diff on the extracted file content. `Textconv` diffs are only a visual guide, and can't be used to merge changes, but this provides better insight into what has changed in the power bi report.
 
-Documentation of git textconv drivers [https://git.wiki.kernel.org/index.php/Textconv]
+Documentation of git `Textconv` drivers [https://git.wiki.kernel.org/index.php/Textconv]
 
 ### Other cool features
 
@@ -129,7 +131,7 @@ where each levels takes precedence over the one before. The main use is the `.pb
 - `/path/to/.pbivcs.conf`
 - `/path/to/my/.pbivcs.conf`
 
-where each one takes precendence over the one preceeding it. Usually this would mean you would set a global `.pbivcs.conf` at the root of your project, but means you can have further ones in different parts of the project if you want different behaviour for the odd report.
+where each one takes precedence over the one preceding it. Usually this would mean you would set a global `.pbivcs.conf` at the root of your project, but means you can have further ones in different parts of the project if you want different behaviour for the odd report.
 
 ### Roadmap
 
@@ -148,8 +150,8 @@ See `./license.md`.
 
 ### TODO (before 'release')
 
-- [ ] argparse etc.
-- [ ] provision script that sets up given repo: provide git template .gitignore and .gitattribtes (e.g. to ignore `*.pbix` or smudge them to a checksum, and ignore changed `modifiedTime` etc. in diffs.
+- [ ] `argparse` etc.
+- [ ] provision script that sets up given repo: provide git template `.gitignore` and `.gitattributes` (e.g. to ignore `*.pbix` or smudge them to a checksum, and ignore changed `modifiedTime` etc. in diffs.
 - [ ] tests ... how?
 - [ ] change control ... save version of tool used?
 - [ ] after compressing, test that the decompressed version is valid (by opening in Power BI Desktop)?
@@ -173,4 +175,4 @@ Secondly, I don't know how things would behave in all situations. E.g. if you ad
 
 ### Tests
 
-- check that configargparse and use of config files behaves as expected
+- [ ] Check that `configargparse` and use of config files behaves as expected
