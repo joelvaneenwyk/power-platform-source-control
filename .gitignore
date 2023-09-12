@@ -1,14 +1,20 @@
+#
+# Git Ignore for Power Platform Python library
+#
+
 # only keep *.pbit samples
 samples/*
 !samples/*.pbit
-__pycache__
-env
-dist
-build
+__pycache__/
+env/
+dist/
+build/
 .vscode/launch.json
 poetry.toml
-.venv
-tests/tmp
+.venv/
+tests/tmp/
 *.ses
-logs
-.pytest_cache
+logs/
+.pytest_cache/
+.tox/
+.coverage

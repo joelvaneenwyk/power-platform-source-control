@@ -21,6 +21,8 @@ pytest = "^7.2.0"
 pyexpect = "^1.0.21"
 twine = "^4.0.1"
 poetryup = "^0.12.3"
+coverage = ">0.0.0"
+pytest-cov = ">0.0.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
